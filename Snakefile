@@ -9,8 +9,8 @@ configfile: "config.yml"
 #  Important Shared Functions  #
 # ---------------------------- #
 
-fragment_length_windows = pd.read_csv('data/manual/fragment_length_windows.tsv', delimiter='\t')
-fragment_length_windows_list = (fragment_length_windows.chr + '-' + fragment_length_windows.start.astype(str) + '-' + fragment_length_windows.end.astype(str)).tolist()
+# fragment_length_windows = pd.read_csv('data/manual/fragment_length_windows.tsv', delimiter='\t')
+# fragment_length_windows_list = (fragment_length_windows.chr + '-' + fragment_length_windows.start.astype(str) + '-' + fragment_length_windows.end.astype(str)).tolist()
 
 def get_active_cohorts():
     """Returns a list of active cohorts.
@@ -123,6 +123,20 @@ def get_cohort_signature_pairs(bed=False):
 
 rule all:
     input:
+        expand(
+            '{output_dir}/pipeline/{cohort}/tmp/bwa_mem/{sample}_lib1.sam'.format(
+           output_dir = get_cohort_outdir(cohort),
+           cohort = cohort,
+           sample = sample
+           ) for cohort,sample in get_all_samples_with_cohorts()
+        )
+        # expand(
+        #     '{output_dir}/pipeline/{cohort}/results/cfmedip_nbglm/{sample}_fit_nbglm.feather'.format(
+        #    output_dir = get_cohort_outdir(cohort),
+        #    cohort = cohort,
+        #    sample = sample
+        #    ) for cohort,sample in get_all_samples_with_cohorts()
+        # )
         #['{output_dir}/pipeline/{cohort}/results/qc/{sample}_qc_complete'.format(
         #    output_dir = get_cohort_outdir(cohort),
         #    cohort = cohort,
@@ -144,18 +158,18 @@ rule all:
         #         cohort = cohort
         #     ) for cohort in get_active_cohorts()
         # ],
-        expand(
-            path_to_data + '/{cohort}/results/cfmedip_nbglm/{sample}_fit_nbglm.feather'.format(
-                cohort=v[0],
-                sample=v[1]
-            ) for v in get_all_samples_with_cohorts()
-        ),
-        expand(
-            path_to_data + '/{cohort}/qc/{sample}_qc_full.txt'.format(
-                cohort=v[0],
-                sample=v[1]
-            ) for v in get_all_samples_with_cohorts()
-        )
+        # expand(
+        #     '{output_dir}/pipeline/{cohort}/results/cfmedip_nbglm/{sample}_fit_nbglm.feather'.format(
+        #         cohort=v[0],
+        #         sample=v[1]
+        #     ) for v in get_all_samples_with_cohorts()
+        # ),
+        # expand(
+        #     path_to_data + '/{cohort}/qc/{sample}_qc_full.txt'.format(
+        #         cohort=v[0],
+        #         sample=v[1]
+        #     ) for v in get_all_samples_with_cohorts()
+        # )
         #expand(
         #    [
         #    '{}/{}/results/extract_signature_matrix/{}-{}-{{valuetype}}.parquet'.format(output_dir, cohort, cohort, signature)
@@ -252,7 +266,7 @@ rule gunzip_fastq:
         lambda wildcards: get_fastq_path(wildcards.cohort, wildcards.sample, int(wildcards.lib), int(wildcards.read)),
     output:
         temp('{output_dir}/pipeline/{cohort}/tmp/gunzip_fastq/{sample}_lib{lib}_R{read}.fastq')
-    resources: cpus=1, mem_mb=8000, time_min='24:00:00'
+    resources: cpus=1, mem_mb=8000, time_min='4:00:00'
     shell:
         'gunzip -dc {input} > {output}'
 
@@ -263,7 +277,7 @@ rule fastqc_fastq:
     output:
         html='{output_dir}/pipeline/{cohort}/results/qc_input/{sample}_lib{lib}_R{read}_fastqc.html',
         zipfile='{output_dir}/pipeline/{cohort}/results/qc_input/{sample}_lib{lib}_R{read}_fastqc.zip'
-    resources: cpus=1, mem_mb=8000, time_min='24:00:00'
+    resources: cpus=1, mem_mb=8000, time_min='12:00:00'
     params:
         outdir = lambda wildcards, output: '/'.join(output.html.split('/')[0:-1])
     conda: 'conda_env/fastqc.yml'
@@ -289,7 +303,7 @@ rule umi_tools_extract:
         logfile = '{output_dir}/pipeline/{cohort}/results/umi_tools_extract/{sample}_lib{lib}_umitools_log.txt'
     params:
         barcodes = lambda wildcards: get_cohort_config(wildcards.cohort)['barcodes']
-    resources: cpus=1, mem_mb=30000, time_min='5-00:00:00'
+    resources: cpus=1, mem_mb=30000, time_min='2-00:00:00'
     conda: 'conda_env/umitools.yml'
     shell:
         'umi_tools extract '
@@ -378,7 +392,7 @@ rule bwa_mem:
         '{output_dir}/pipeline/{cohort}/tmp/trim_fastq/{sample}_lib{lib}_umitools_R2_val_2.fq',
     output:
         temp('{output_dir}/pipeline/{cohort}/tmp/bwa_mem/{sample}_lib{lib}.sam')
-    resources: cpus=4, mem_mb=16000, time_min='72:00:00'
+    resources: cpus=4, mem_mb=16000, time_min='2-00:00:00'
     params:
         read_group = lambda wildcards, input: get_read_group_from_fastq(
             fastq_file = get_fastq_path(wildcards.cohort, wildcards.sample, wildcards.lib),
@@ -400,7 +414,7 @@ rule sam_to_sorted_bam:
     output:
         bam = temp('{output_dir}/pipeline/{cohort}/tmp/bwa_mem/{sample}_lib{lib}.sorted.bam'),
         index = temp('{output_dir}/pipeline/{cohort}/tmp/bwa_mem/{sample}_lib{lib}.sorted.bam.bai'),
-    resources: cpus=32, mem_mb=30000, time_min='72:00:00'
+    resources: cpus=32, mem_mb=30000, time_min='2-00:00:00'
     conda: 'conda_env/samtools.yml'
     shell:
         # Try it without fixmate for replication purposes
@@ -450,7 +464,7 @@ rule bam_umitools_dedup:
     params:
         stat_prefix = '{output_dir}/pipeline/{cohort}/results/bam/{sample}.aligned.sorted.dedup',
     conda: 'conda_env/umitools.yml'
-    resources: cpus=1, mem_mb=30000, time_min='5-00:00:00'
+    resources: cpus=1, mem_mb=30000, time_min='2-00:00:00'
     shell:
         'umi_tools dedup --paired -I {input.bam} -S {output.bam} --umi-separator="_" --output-stats={params.stat_prefix}'
 
@@ -483,9 +497,9 @@ rule index_final_bam:
 ## Get hg38 only bam without F19K16 and F24B22 reads for QC purposes
 rule get_hg38_bam:
     input:
-        path_to_data + '/{cohort}/results/bam_markdup/{sample}.aligned.sorted.markdup.bam',
+        '{output_dir}/pipeline/{cohort}/results/bam_markdup/{sample}.aligned.sorted.markdup.bam',
     output:
-        path_to_data + '/{cohort}/results/bam_markdup/{sample}.aligned.sorted.markdup_hg38only.bam',
+        '{output_dir}/pipeline/{cohort}/results/bam_markdup/{sample}.aligned.sorted.markdup_hg38only.bam',
     resources: cpus=1, mem_mb=12000, time_min='5:00:00'
     conda: 'conda_env/samtools.yml'
     shell:
@@ -494,10 +508,10 @@ rule get_hg38_bam:
 # Run FASTQC on final BAM files.
 rule fastqc_bam_hg38:
     input:
-        path_to_data + '/{cohort}/results/bam_markdup/{sample}.aligned.sorted.markdup_hg38only.bam',
+        '{output_dir}/pipeline/{cohort}/results/bam_markdup/{sample}.aligned.sorted.markdup_hg38only.bam',
     output:
-        html = path_to_data + '/{cohort}/qc/fastqc_bam/{sample}.aligned.sorted.markdup_hg38only_fastqc.html',
-        zipfile = path_to_data + '/{cohort}/qc/fastqc_bam/{sample}.aligned.sorted.markdup_hg38only_fastqc.zip',
+        html = '{output_dir}/pipeline/{cohort}/qc/fastqc_bam/{sample}.aligned.sorted.markdup_hg38only_fastqc.html',
+        zipfile = '{output_dir}/pipeline/{cohort}/qc/fastqc_bam/{sample}.aligned.sorted.markdup_hg38only_fastqc.zip',
     resources: cpus=1, mem_mb=8000, time_min='24:00:00'
     params:
         outdir = lambda wildcards, output: '/'.join(output.html.split('/')[0:-1])
@@ -508,9 +522,9 @@ rule fastqc_bam_hg38:
 # Run Flagstat to get basic stats on final BAM files.
 rule bam_flagstat_hg38:
     input:
-        path_to_data + '/{cohort}/results/bam_markdup/{sample}.aligned.sorted.markdup_hg38only.bam',
+        '{output_dir}/pipeline/{cohort}/results/bam_markdup/{sample}.aligned.sorted.markdup_hg38only.bam',
     output:
-        path_to_data + '/{cohort}/qc/flagstat/{sample}.aligned.sorted.markdup_hg38only.bam.flagstat',
+        '{output_dir}/pipeline/{cohort}/qc/flagstat/{sample}.aligned.sorted.markdup_hg38only.bam.flagstat',
     resources: cpus=1, mem_mb=8000, time_min='1:00:00'
     conda: 'conda_env/samtools.yml'
     shell:
@@ -519,9 +533,9 @@ rule bam_flagstat_hg38:
 # Run MEDIPS QC on final (aligned, sorted, dup marked) BAM files.
 rule medips_qc:
     input:
-        path_to_data + '/{cohort}/results/bam_markdup/{sample}.aligned.sorted.markdup_hg38only.bam',
+        '{output_dir}/pipeline/{cohort}/results/bam_markdup/{sample}.aligned.sorted.markdup_hg38only.bam',
     output:
-        csv = path_to_data + '/{cohort}/qc/medips_qc/{sample}_QC_MEDIPS.csv',
+        csv = '{output_dir}/pipeline/{cohort}/qc/medips_qc/{sample}_QC_MEDIPS.csv',
     params:
         outdir = lambda wildcards, output: '/'.join(output.csv.split('/')[0:-1]),
         winsize = config['pipeline_params']['window_size'],
@@ -535,11 +549,11 @@ rule medips_qc:
 ## CollectGcBiasMetrics
 rule CollectGcBiasMetrics:
     input:
-        path_to_data + '/{cohort}/results/bam_markdup/{sample}.aligned.sorted.markdup_hg38only.bam',
+        '{output_dir}/pipeline/{cohort}/results/bam_markdup/{sample}.aligned.sorted.markdup_hg38only.bam',
     output:
-        metric = path_to_data + '/{cohort}/qc/picard_qc/{sample}.gc_bias_metrics.txt',
-        chart = path_to_data + '/{cohort}/qc/picard_qc/{sample}.gc_bias_metrics.pdf',
-        summary = path_to_data + '/{cohort}/qc/picard_qc/{sample}.gc_bias_summary_metrics.txt',
+        metric = '{output_dir}/pipeline/{cohort}/qc/picard_qc/{sample}.gc_bias_metrics.txt',
+        chart = '{output_dir}/pipeline/{cohort}/qc/picard_qc/{sample}.gc_bias_metrics.pdf',
+        summary = '{output_dir}/pipeline/{cohort}/qc/picard_qc/{sample}.gc_bias_summary_metrics.txt',
     params:
         fasta = config['data']['defaults']['hg38only_genome'],
     resources: cpus=1, mem_mb=30000, time_min='5:00:00'
@@ -550,10 +564,10 @@ rule CollectGcBiasMetrics:
 ## CollectInsertSizeMetrics
 rule CollectInsertSizeMetrics:
     input:
-        path_to_data + '/{cohort}/results/bam_markdup/{sample}.aligned.sorted.markdup_hg38only.bam',
+        '{output_dir}/pipeline/{cohort}/results/bam_markdup/{sample}.aligned.sorted.markdup_hg38only.bam',
     output:
-        metric = path_to_data + '/{cohort}/qc/picard_qc/{sample}.picardInsertSize_metrics.txt',
-        histo = path_to_data + '/{cohort}/qc/picard_qc/{sample}.picardInsertSize_metrics.pdf',
+        metric = '{output_dir}/pipeline/{cohort}/qc/picard_qc/{sample}.picardInsertSize_metrics.txt',
+        histo = '{output_dir}/pipeline/{cohort}/qc/picard_qc/{sample}.picardInsertSize_metrics.pdf',
     resources: cpus=1, mem_mb=16000, time_min='5:00:00'
     conda: 'conda_env/samtools.yml'
     shell:
@@ -562,10 +576,10 @@ rule CollectInsertSizeMetrics:
 ## MarkDuplicates
 rule MarkDuplicates_QC:
     input:
-        path_to_data + '/{cohort}/results/bam_markdup/{sample}.aligned.sorted.markdup_hg38only.bam',
+        '{output_dir}/pipeline/{cohort}/results/bam_markdup/{sample}.aligned.sorted.markdup_hg38only.bam',
     output:
-        markdup_bam = temp(path_to_data + '/{cohort}/qc/picard_qc/{sample}.picardMarkDup.bam'),
-        metric = path_to_data + '/{cohort}/qc/picard_qc/{sample}.marked_dup_metrics.txt',
+        markdup_bam = temp('{output_dir}/pipeline/{cohort}/qc/picard_qc/{sample}.picardMarkDup.bam'),
+        metric = '{output_dir}/pipeline/{cohort}/qc/picard_qc/{sample}.marked_dup_metrics.txt',
     resources: cpus=1, mem_mb=30000, time_min='5:00:00'
     conda: 'conda_env/samtools.yml'
     shell:
@@ -574,9 +588,9 @@ rule MarkDuplicates_QC:
 ## CollectAlignmentSummaryMetrics
 rule CollectAlignmentSummaryMetrics:
     input:
-        path_to_data + '/{cohort}/results/bam_markdup/{sample}.aligned.sorted.markdup_hg38only.bam',
+        '{output_dir}/pipeline/{cohort}/results/bam_markdup/{sample}.aligned.sorted.markdup_hg38only.bam',
     output:
-        metric = path_to_data + '/{cohort}/qc/picard_qc/{sample}.alignmentMetrics.txt',
+        metric = '{output_dir}/pipeline/{cohort}/qc/picard_qc/{sample}.alignmentMetrics.txt',
     params:
         fasta = config['data']['defaults']['hg38only_genome'],
     resources: cpus=1, mem_mb=30000, time_min='5:00:00'
@@ -587,9 +601,9 @@ rule CollectAlignmentSummaryMetrics:
 ## CollectQualityYieldMetrics
 rule CollectQualityYieldMetrics:
     input:
-        path_to_data + '/{cohort}/results/bam_markdup/{sample}.aligned.sorted.markdup_hg38only.bam',
+        '{output_dir}/pipeline/{cohort}/results/bam_markdup/{sample}.aligned.sorted.markdup_hg38only.bam',
     output:
-        metric = path_to_data + '/{cohort}/qc/picard_qc/{sample}.quality_yield_metrics.txt',
+        metric = '{output_dir}/pipeline/{cohort}/qc/picard_qc/{sample}.quality_yield_metrics.txt',
     resources: cpus=1, mem_mb=30000, time_min='5:00:00'
     conda: 'conda_env/samtools.yml'
     shell:
@@ -598,10 +612,10 @@ rule CollectQualityYieldMetrics:
 # F19K16 and F24B22 methylated filler QC
 rule F19K16_F24B22_QC:
     input:
-        path_to_data + '/{cohort}/results/bam_markdup/{sample}.aligned.sorted.markdup.bam',
+        '{output_dir}/pipeline/{cohort}/results/bam_markdup/{sample}.aligned.sorted.markdup.bam',
     output:
-        methyl_counts = path_to_data + '/{cohort}/qc/methyl_qc/{sample}.methyl_counts',
-        methyl_summary = path_to_data + '/{cohort}/qc/methyl_qc/{sample}.methyl_summary.txt',
+        methyl_counts = '{output_dir}/pipeline/{cohort}/qc/methyl_qc/{sample}.methyl_counts',
+        methyl_summary = '{output_dir}/pipeline/{cohort}/qc/methyl_qc/{sample}.methyl_summary.txt',
     resources: cpus=1, mem_mb=16000, time_min='2:00:00'
     conda: 'conda_env/samtools.yml'
     shell:
@@ -612,23 +626,23 @@ rule F19K16_F24B22_QC:
 rule QC_out:
     input:
         #fastqc_input_fastq: had to be input to trim_galore in process_fastq.smk for wildcards to populate
-        fastqc_bam = path_to_data + '/{cohort}/qc/fastqc_bam/{sample}.aligned.sorted.markdup_hg38only_fastqc.html',
-        flagstat = path_to_data + '/{cohort}/qc/flagstat/{sample}.aligned.sorted.markdup_hg38only.bam.flagstat',
-        medips_qc = path_to_data + '/{cohort}/qc/medips_qc/{sample}_QC_MEDIPS.csv',
-        picard_gcbias_metric = path_to_data + '/{cohort}/qc/picard_qc/{sample}.gc_bias_metrics.txt',
-        picard_gcbias_chart = path_to_data + '/{cohort}/qc/picard_qc/{sample}.gc_bias_metrics.pdf',
-        picard_gcbias_summary = path_to_data + '/{cohort}/qc/picard_qc/{sample}.gc_bias_summary_metrics.txt',
-        picard_insertsize_metric = path_to_data + '/{cohort}/qc/picard_qc/{sample}.picardInsertSize_metrics.txt',
-        picard_markdup_metric = path_to_data + '/{cohort}/qc/picard_qc/{sample}.marked_dup_metrics.txt',
-        picard_alignment_metric = path_to_data + '/{cohort}/qc/picard_qc/{sample}.alignmentMetrics.txt',
-        picard_quality_metric = path_to_data + '/{cohort}/qc/picard_qc/{sample}.quality_yield_metrics.txt',
+        fastqc_bam = '{output_dir}/pipeline/{cohort}/qc/fastqc_bam/{sample}.aligned.sorted.markdup_hg38only_fastqc.html',
+        flagstat = '{output_dir}/pipeline/{cohort}/qc/flagstat/{sample}.aligned.sorted.markdup_hg38only.bam.flagstat',
+        medips_qc = '{output_dir}/pipeline/{cohort}/qc/medips_qc/{sample}_QC_MEDIPS.csv',
+        picard_gcbias_metric = '{output_dir}/pipeline/{cohort}/qc/picard_qc/{sample}.gc_bias_metrics.txt',
+        picard_gcbias_chart = '{output_dir}/pipeline/{cohort}/qc/picard_qc/{sample}.gc_bias_metrics.pdf',
+        picard_gcbias_summary = '{output_dir}/pipeline/{cohort}/qc/picard_qc/{sample}.gc_bias_summary_metrics.txt',
+        picard_insertsize_metric = '{output_dir}/pipeline/{cohort}/qc/picard_qc/{sample}.picardInsertSize_metrics.txt',
+        picard_markdup_metric = '{output_dir}/pipeline/{cohort}/qc/picard_qc/{sample}.marked_dup_metrics.txt',
+        picard_alignment_metric = '{output_dir}/pipeline/{cohort}/qc/picard_qc/{sample}.alignmentMetrics.txt',
+        picard_quality_metric = '{output_dir}/pipeline/{cohort}/qc/picard_qc/{sample}.quality_yield_metrics.txt',
         #picard_rrbs_metric = path_to_data + '/{cohort}/qc/picard_qc/{sample}.Rrbs',
         #picard_rrbs_detailed_metric = path_to_data + '/{cohort}/qc/picard_qc/{sample}.Rrbs.rrbs_detail_metrics',
         #picard_rrbs_qc_pdf = path_to_data + '/{cohort}/qc/picard_qc/{sample}.Rrbs.rrbs_qc.pdf',
         #picard_rrbs_summary = path_to_data + '/{cohort}/qc/picard_qc/{sample}.Rrbs.rrbs_summary_metrics',
-        F19K16_F24B22_methyl_summary = path_to_data + '/{cohort}/qc/methyl_qc/{sample}.methyl_summary.txt',
+        F19K16_F24B22_methyl_summary = '{output_dir}/pipeline/{cohort}/qc/methyl_qc/{sample}.methyl_summary.txt',
     output:
-        full_qc = path_to_data + '/{cohort}/qc/{sample}_qc_full.txt',
+        full_qc = '{output_dir}/pipeline/{cohort}/qc/{sample}_qc_full.txt',
     resources: cpus=1, mem_mb=1000, time_min='00:01:00'
     conda: 'conda_env/samtools.yml'
     shell:
@@ -878,7 +892,7 @@ rule cfmedip_nbglm:
     output:
         fit='{output_dir}/pipeline/{cohort}/results/cfmedip_nbglm/{sample}_fit_nbglm.feather',
         model='{output_dir}/pipeline/{cohort}/results/cfmedip_nbglm/{sample}_fit_nbglm_model.Rds',
-    resources: cpus=1, time_min='5-00:00:00', mem_mb=lambda wildcards, attempt: 16000 if attempt == 1 else 30000
+    resources: cpus=1, time_min='2-00:00:00', mem_mb=30000
     conda: 'conda_env/cfmedip_r.yml'
     shell:
         'Rscript src/R/cfmedip_nbglm.R -i {input} -o {output.fit} --modelout {output.model}'
@@ -903,7 +917,7 @@ rule medestrand:
         '{output_dir}/pipeline/{cohort}/results/bam/{sample}.aligned.sorted.dedup.bam',
     output:
         '{output_dir}/pipeline/{cohort}/results/medestrand/{sample}_medestrand_output.feather',
-    resources: cpus=1, mem_mb=30000, time_min='5-00:00:00'
+    resources: cpus=1, mem_mb=30000, time_min='1-00:00:00'
     conda: 'conda_env/cfmedip_r.yml'
     params: bsgenome = lambda wildcards: get_cohort_config(wildcards.cohort)['bsgenome']['human']
     shell:

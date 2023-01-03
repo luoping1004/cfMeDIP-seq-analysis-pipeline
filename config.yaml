@@ -1,0 +1,10 @@
+jobs: 20
+latency-wait: 60
+max-jobs-per-second: 1
+restart-times: 2
+rerun-incomplete: True
+keep-going: True
+
+cluster: "sbatch -p all -t {resources.time_min} --mem={resources.mem_mb} -c {resources.cpus} -o logs_slurm/{rule}_{wildcards.sample}_{wildcards.cohort}.out -e logs_slurm/{rule}_{wildcards.sample}_{wildcards.cohort}.err --mail-type=FAIL --mail-user=ping.luo@uhn.ca"
+use-conda: true
+default-resources: [cpus=1, mem_mb=2000, time_min=60]

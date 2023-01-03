@@ -2,20 +2,23 @@ paths:
   # This section defines a few external dependencies which are not bundled into any
   # pre-existing package manager. You will need to download these dependencies
   # and point to them here by providing their paths.
-  
+
   dependencies:
 
-    # ConsensusCruncher: 
+    # ConsensusCruncher:
     # Clone https://github.com/pughlab/ConsensusCruncher and locate extract_barcodes.py
     # within the code. Provide the absolute path to extract_barcodes.py below.
     extract_barcodes_path: src/ConsensusCruncher/ConsensusCruncher/extract_barcodes.py
 
-    # MeDEStrand: 
+    # MeDEStrand:
     # Clone https://github.com/eyzhao/MeDEStrand. This is a slightly modified version
     # of MeDEStrand which allows it to be compatible with this pipeline.
     # Provide the basepath to the cloned repo below. It is dynamically loaded into
     # R code using devtools::load_all().
     medestrand_path: /cluster/home/zhaoe/git/MeDEStrand
+
+pipeline_params:
+  window_size: 300
 
 data:
   # Excluded Cases:
@@ -30,17 +33,17 @@ data:
   # for a given cohort. Alternative settings are specified under the same names under
   # data > cohorts > [cohortname] > settings. For example, if you wanted to use a different
   # genome for a cohort named mycohort, you could provide a path to the alternative genome
-  # under data > cohorts > mycohort > settings > genome, and that would override the 
+  # under data > cohorts > mycohort > settings > genome, and that would override the
   # default genome specified below.
   defaults:
     # Output Directory: Base path to where this project outputs. It will automatically append
     # the name of the project. e.g. if output_dir = /path/to/output/, then the project
     # named "myproject" results will go to /path/to/output/myproject.
-    output_dir: /cluster/projects/cgptip/projects/INSPIRE/analysis/cfMedip
+    output_dir: /cluster/projects/pughlab/projects/CHARM_LFS_cfmedip_medremix
 
     # Genome: path to default genome .fa file.
-    genome: /cluster/projects/pughlab/projects/ezhao/assets/reference/genomes/hg38_F19K16_F24B22/hg38_F19K16_F24B22.fa
-
+    genome: /cluster/projects/pughlab/projects/CHARM/LFS/Ping_medremix/genomes/hg38_F19K16_F24B22.fa
+    hg38only_genome: /cluster/tools/data/genomes/human/hg38/iGenomes/Sequence/WholeGenomeFasta/genome.fa
     # BWA Index: this is the prefix for BWA Index. By adding the file extensions,
     # you can locate the files. For example,
     # bwa_index: /path/to/bwa/index implies that the following files exist:
@@ -112,17 +115,14 @@ data:
     comparison:
       samplesheet: /cluster/projects/pughlab/projects/ezhao/pipelines/cfmedipseq_pipeline/input/cohorts/samplesheet_comparison_cfmedip.csv
       active: False
-    test:
-      samplesheet: /cluster/projects/pughlab/projects/ezhao/pipelines/cfmedipseq_pipeline/input/cohorts/samplesheet_comparison_cfmedip_test.csv
-      active: False
-    inspire:
-      samplesheet: data/manual/samplesheets/inspire_samplesheet.csv
-      active: True
-    awadalla-breast:
-      samplesheet: data/manual/samplesheets/awadalla_breast_samplesheet.csv
+    medremix_v4_test:
+      samplesheet: /cluster/home/pluo/Project/cfMeDIP/sample_sheet/samplesheet_HBC_cfmedip_test.csv
       active: True
       settings:
-        output_dir: '/cluster/projects/pughlab/projects/cfmedip_pipeline'
+        output_dir: '/cluster/projects/pughlab/projects/CHARM_HBC_cfmedip_medremix'
+    inspire:
+      samplesheet: data/manual/samplesheets/inspire_samplesheet.csv
+      active: False
     kuihcc-normal:
       samplesheet: data/manual/samplesheets/kuihcc_normal_samplesheet.csv
       active: False
