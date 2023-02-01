@@ -123,17 +123,6 @@ data:
     inspire:
       samplesheet: data/manual/samplesheets/inspire_samplesheet.csv
       active: False
-    kuihcc-normal:
-      samplesheet: data/manual/samplesheets/kuihcc_normal_samplesheet.csv
-      active: False
-      settings:
-        output_dir: '/cluster/projects/pughlab/projects/cfmedip_pipeline'
-    oracle:
-      samplesheet: data/manual/samplesheets/oracle_samplesheet.csv
-      active: False
-    charmnormal:
-      samplesheet: data/manual/samplesheets/charm_normal.csv
-      active: False
     kuinormal:
       samplesheet: data/manual/samplesheets/kuinormal_samplesheet.csv
       active: False
